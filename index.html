@@ -79,6 +79,9 @@
   .team-summary-table td:first-child{text-align:left;font-weight:700}
   .score-value{display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;font-weight:750}
   .score-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .team-sort-button{width:100%;display:inline-flex;align-items:center;justify-content:flex-end;gap:5px;border:0;background:transparent;color:inherit;font:inherit;font-weight:700;text-transform:inherit;letter-spacing:inherit;padding:0;cursor:pointer}
+  .team-sort-button:hover,.team-sort-button:focus-visible{color:#15161a;outline:none}
+  .sort-arrow{min-width:10px;color:#9a770d;font-size:11px}
   .improvement-list{display:flex;flex-direction:column}
   .improvement-row{display:grid;grid-template-columns:minmax(150px,1fr) minmax(160px,.9fr) minmax(280px,2fr);gap:16px;align-items:center;padding:9px 0;border-bottom:1px solid #ececea}
   .improvement-row:last-child{border-bottom:0}
@@ -847,16 +850,22 @@ function showTrendTip(ev,period,values,selectedCount){
 function dashboardRows(key,selected){
   return (DASHBOARD[key]||[]).filter(row=>selected.includes(row.equipo));
 }
-function orderDescending(rows,valueOf,labelOf=item=>item.equipo||item.label||""){
+function orderByValue(rows,valueOf,direction="desc",labelOf=item=>item.equipo||item.label||""){
   const numeric=value=>{
     if(value==null||value==="")return -Infinity;
     const parsed=Number(value);
     return Number.isFinite(parsed)?parsed:-Infinity;
   };
-  return [...rows].sort((a,b)=>
-    numeric(valueOf(b))-numeric(valueOf(a))||
-    fixText(labelOf(a)).localeCompare(fixText(labelOf(b)),"es")
-  );
+  return [...rows].sort((a,b)=>{
+    const aValue=numeric(valueOf(a)),bValue=numeric(valueOf(b));
+    if(aValue===-Infinity&&bValue!==-Infinity)return 1;
+    if(bValue===-Infinity&&aValue!==-Infinity)return -1;
+    const difference=direction==="asc"?aValue-bValue:bValue-aValue;
+    return difference||fixText(labelOf(a)).localeCompare(fixText(labelOf(b)),"es");
+  });
+}
+function orderDescending(rows,valueOf,labelOf){
+  return orderByValue(rows,valueOf,"desc",labelOf);
 }
 function externalPeriodAvailable(qA){
   return !DASHBOARD.q_actual||DASHBOARD.q_actual===qA;
@@ -876,6 +885,7 @@ function barRows(rows,{valueKey="value",max=100,color="blue",formatter=v=>`${Mat
     </div>`;
   }).join("")}</div>`;
 }
+const teamSort={key:"madurez",direction:"desc"};
 function renderTeamComparison(selected,qA){
   document.getElementById("teamChartMeta").textContent=`${qA||"—"} · ${selected.length} equipo${selected.length===1?"":"s"}`;
   if(!selected.length){
@@ -887,8 +897,8 @@ function renderTeamComparison(selected,qA){
     ["cultura","Cultura","#1E7A4D"],
     ["rendimiento","Rendimiento","#1538B5"],
   ];
-  const maturity=equipo=>(INDEX_SCORES[equipo]&&INDEX_SCORES[equipo][qA]||{}).madurez;
-  const rows=orderDescending(selected,maturity,equipo=>equipo).map(equipo=>{
+  const teamValue=equipo=>(INDEX_SCORES[equipo]&&INDEX_SCORES[equipo][qA]||{})[teamSort.key];
+  const rows=orderByValue(selected,teamValue,teamSort.direction,equipo=>equipo).map(equipo=>{
     const cells=metrics.map(([tipo,,color])=>{
       const value=(INDEX_SCORES[equipo]&&INDEX_SCORES[equipo][qA]||{})[tipo];
       const result=value==null?"—":`${(Number(value)*10).toFixed(0)}%`;
@@ -896,13 +906,25 @@ function renderTeamComparison(selected,qA){
     }).join("");
     return `<tr><td>${esc(fixText(equipo))}</td>${cells}</tr>`;
   }).join("");
-  document.getElementById("teamComparison").innerHTML=`
+  const container=document.getElementById("teamComparison");
+  container.innerHTML=`
     <div class="team-summary-wrap">
       <table class="team-summary-table" aria-label="Resultados por equipo">
-        <thead><tr><th>Equipo</th>${metrics.map(([,label])=>`<th>${label}</th>`).join("")}</tr></thead>
+        <thead><tr><th>Equipo</th>${metrics.map(([tipo,label])=>{
+          const active=teamSort.key===tipo;
+          const ariaSort=active?(teamSort.direction==="asc"?"ascending":"descending"):"none";
+          const arrow=active?(teamSort.direction==="asc"?"↑":"↓"):"↕";
+          return `<th aria-sort="${ariaSort}"><button type="button" class="team-sort-button" data-team-sort="${tipo}" aria-label="Ordenar por ${label}">${label}<span class="sort-arrow" aria-hidden="true">${arrow}</span></button></th>`;
+        }).join("")}</tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
+  container.querySelectorAll("[data-team-sort]").forEach(button=>button.addEventListener("click",()=>{
+    const key=button.dataset.teamSort;
+    teamSort.direction=teamSort.key===key&&teamSort.direction==="desc"?"asc":"desc";
+    teamSort.key=key;
+    renderTeamComparison(selected,qA);
+  }));
 }
 function renderCompetencyCharts(selected,qA){
   const map=selectedScoreMap(selected,qA);
