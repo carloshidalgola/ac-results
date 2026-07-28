@@ -60,7 +60,6 @@
   .section-meta{font-size:11px;color:var(--muted);white-space:nowrap}
   .chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
   .chart-panel{border:1px solid #ececea;border-radius:12px;padding:16px;min-width:0}
-  .chart-panel.full-width{grid-column:1/-1}
   .chart-panel h3{font-size:14px;margin:0 0 4px}
   .chart-panel .sub{font-size:11px;color:var(--muted);margin:0 0 14px}
   .bar-list{display:flex;flex-direction:column;gap:13px}
@@ -71,15 +70,24 @@
   .bar-fill.gold{background:#DDA40A}.bar-fill.green{background:#1E7A4D}.bar-fill.red{background:#D81E26}
   .bar-fill.blue{background:#1538B5}.bar-fill.light-blue{background:#6F8BEE}
   .bar-value{text-align:right;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
-  .team-block{padding:12px 0;border-top:1px solid #ececea}
-  .team-block:first-child{padding-top:0;border-top:0}
-  .team-title{display:flex;justify-content:space-between;gap:10px;margin-bottom:8px;font-size:12px;font-weight:700}
+  .team-summary-wrap{width:100%;overflow:auto}
+  .team-summary-table{width:100%;border-collapse:collapse;min-width:520px;font-size:12px}
+  .team-summary-table th{padding:7px 10px;border-bottom:1px solid #deddd8;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;text-align:right}
+  .team-summary-table th:first-child{text-align:left}
+  .team-summary-table td{padding:9px 10px;border-bottom:1px solid #ececea;text-align:right;font-variant-numeric:tabular-nums}
+  .team-summary-table tbody tr:last-child td{border-bottom:0}
+  .team-summary-table td:first-child{text-align:left;font-weight:700}
+  .score-value{display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;font-weight:750}
+  .score-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .improvement-list{display:flex;flex-direction:column}
+  .improvement-row{display:grid;grid-template-columns:minmax(150px,1fr) minmax(160px,.9fr) minmax(280px,2fr);gap:16px;align-items:center;padding:9px 0;border-bottom:1px solid #ececea}
+  .improvement-row:last-child{border-bottom:0}
+  .improvement-team{font-size:12px;font-weight:700}
+  .improvement-volume{display:grid;grid-template-columns:minmax(90px,1fr) auto;gap:9px;align-items:center}
+  .improvement-count{font-size:11px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
   .category-list{display:flex;flex-wrap:wrap;gap:7px}
-  .category-pill{display:inline-flex;align-items:center;min-height:26px;padding:5px 9px;border-radius:999px;background:#faf4df;border:1px solid #ead69a;color:#745a09;font-size:10px;font-weight:750}
-  .metric-legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;font-size:11px;color:var(--muted)}
+  .category-pill{display:inline-flex;align-items:center;min-height:22px;padding:3px 8px;border-radius:999px;background:#faf4df;border:1px solid #ead69a;color:#745a09;font-size:10px;font-weight:750}
   .legend-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
-  .stack-track{height:16px;background:#ecebe7;border-radius:999px;overflow:hidden;display:flex}
-  .stack-segment{height:100%}
   .empty-state{font-size:12px;color:var(--muted);padding:20px 0}
   .trend-wrap{width:100%;overflow:auto}
   .trend-svg{display:block;width:100%;min-width:620px;height:280px}
@@ -115,6 +123,7 @@
     .awards-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
     .section-head{align-items:flex-start;flex-direction:column}
     .bar-row{grid-template-columns:minmax(100px,150px) minmax(100px,1fr) 52px}
+    .improvement-row{grid-template-columns:1fr;gap:7px}
     #radar{height:auto;min-height:0}
   }
   @media (max-width:520px){.toolbar{grid-template-columns:1fr}.toolbar .field:first-child,.legend,.btns{grid-column:auto}.awards-grid{grid-template-columns:1fr}}
@@ -169,6 +178,7 @@
         <svg id="radar" viewBox="0 0 1120 1120" xmlns="http://www.w3.org/2000/svg" role="img"
              aria-label="Radar de madurez ágil comparando dos trimestres por competencia"></svg>
       </div>
+      <div class="insight" id="executiveInsight"></div>
       <div class="dashboard" id="dashboard">
         <section class="section-card">
           <div class="section-head">
@@ -194,16 +204,31 @@
         </section>
         <section class="section-card">
           <div class="section-head">
-            <div><h2>Accionables de mejora implementados</h2><p>Indicadores conectados con las fuentes usadas en el reporte ejecutivo.</p></div>
-            <span class="section-meta">Azure DevOps y encuesta de stakeholders</span>
+            <div><h2>Entrega de valor</h2><p>Features de negocio y habilitadores entregados en el periodo.</p></div>
+            <span class="section-meta">Azure DevOps</span>
           </div>
-          <div class="chart-grid">
-            <div class="chart-panel full-width"><h3>Accionables implementados</h3><p class="sub">Cantidad cerrada y subdimensiones abordadas.</p><div id="actionablesChart"></div></div>
-            <div class="chart-panel"><h3>Entrega de valor</h3><p class="sub">Features de negocio y habilitadores.</p><div id="deliveryChart"></div></div>
-            <div class="chart-panel"><h3>Percepción de stakeholders</h3><p class="sub">Promedio de satisfacción, valor y tiempo de entrega.</p><div id="stakeholderChart"></div></div>
-            <div class="chart-panel full-width"><h3>Acciones de Mejora por Implementar</h3><p class="sub">Categorías de las mejoras definidas.</p><div id="retroChart"></div></div>
+          <div id="deliveryChart"></div>
+        </section>
+        <section class="section-card">
+          <div class="section-head">
+            <div><h2>Percepción de stakeholders</h2><p>Satisfacción, valor percibido y tiempo de entrega.</p></div>
+            <span class="section-meta">Encuesta de stakeholders</span>
           </div>
-          <div class="insight" id="executiveInsight"></div>
+          <div id="stakeholderChart"></div>
+        </section>
+        <section class="section-card">
+          <div class="section-head">
+            <div><h2>Accionables de mejora implementados</h2><p>Mejoras cerradas que sostienen la evolución de los equipos.</p></div>
+            <span class="section-meta">Azure DevOps</span>
+          </div>
+          <div id="actionablesChart"></div>
+        </section>
+        <section class="section-card">
+          <div class="section-head">
+            <div><h2>Retrospectiva estratégica</h2><p>Mejoras definidas para orientar el siguiente ciclo.</p></div>
+            <span class="section-meta">Azure DevOps</span>
+          </div>
+          <div id="retroChart"></div>
         </section>
         <section class="section-card awards-section">
           <div class="section-head">
@@ -822,6 +847,17 @@ function showTrendTip(ev,period,values,selectedCount){
 function dashboardRows(key,selected){
   return (DASHBOARD[key]||[]).filter(row=>selected.includes(row.equipo));
 }
+function orderDescending(rows,valueOf,labelOf=item=>item.equipo||item.label||""){
+  const numeric=value=>{
+    if(value==null||value==="")return -Infinity;
+    const parsed=Number(value);
+    return Number.isFinite(parsed)?parsed:-Infinity;
+  };
+  return [...rows].sort((a,b)=>
+    numeric(valueOf(b))-numeric(valueOf(a))||
+    fixText(labelOf(a)).localeCompare(fixText(labelOf(b)),"es")
+  );
+}
 function externalPeriodAvailable(qA){
   return !DASHBOARD.q_actual||DASHBOARD.q_actual===qA;
 }
@@ -847,22 +883,26 @@ function renderTeamComparison(selected,qA){
     return;
   }
   const metrics=[
-    ["madurez","Madurez","gold"],
-    ["cultura","Cultura","green"],
-    ["rendimiento","Rendimiento","blue"],
+    ["madurez","Madurez","#DDA40A"],
+    ["cultura","Cultura","#1E7A4D"],
+    ["rendimiento","Rendimiento","#1538B5"],
   ];
-  document.getElementById("teamComparison").innerHTML=selected.map(equipo=>{
-    const rows=metrics.map(([tipo,label,color])=>{
+  const maturity=equipo=>(INDEX_SCORES[equipo]&&INDEX_SCORES[equipo][qA]||{}).madurez;
+  const rows=orderDescending(selected,maturity,equipo=>equipo).map(equipo=>{
+    const cells=metrics.map(([tipo,,color])=>{
       const value=(INDEX_SCORES[equipo]&&INDEX_SCORES[equipo][qA]||{})[tipo];
-      const percent=value==null?0:Number(value)*10;
-      return `<div class="bar-row">
-        <div class="bar-label">${label}</div>
-        <div class="bar-track"><div class="bar-fill ${color}" style="width:${Math.max(0,Math.min(100,percent))}%"></div></div>
-        <div class="bar-value">${value==null?"—":`${percent.toFixed(0)}%`}</div>
-      </div>`;
+      const result=value==null?"—":`${(Number(value)*10).toFixed(0)}%`;
+      return `<td><span class="score-value"><i class="score-dot" style="background:${color}"></i>${result}</span></td>`;
     }).join("");
-    return `<div class="team-block"><div class="team-title"><span>${esc(fixText(equipo))}</span><span>${esc(qA)}</span></div><div class="bar-list">${rows}</div></div>`;
+    return `<tr><td>${esc(fixText(equipo))}</td>${cells}</tr>`;
   }).join("");
+  document.getElementById("teamComparison").innerHTML=`
+    <div class="team-summary-wrap">
+      <table class="team-summary-table" aria-label="Resultados por equipo">
+        <thead><tr><th>Equipo</th>${metrics.map(([,label])=>`<th>${label}</th>`).join("")}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 function renderCompetencyCharts(selected,qA){
   const map=selectedScoreMap(selected,qA);
@@ -916,25 +956,28 @@ function renderTrend(selected){
 }
 function renderImprovementBars({targetId,sourceKey,selected,totalKey,singular,plural,emptyMessage}){
   const target=document.getElementById(targetId);
-  const rows=dashboardRows(sourceKey,selected).map(row=>({
+  const rows=orderDescending(dashboardRows(sourceKey,selected).map(row=>({
     equipo:row.equipo,
     total:Number(row[totalKey]||0),
     categorias:(row.categorias||[]).filter(categoria=>categoria&&categoria.nombre),
-  }));
+  })),row=>row.total);
   if(!rows.length){
     target.innerHTML=`<div class="empty-state">${esc(emptyMessage)}</div>`;
     return;
   }
   const max=Math.max(1,...rows.map(row=>row.total));
-  target.innerHTML=rows.map(row=>{
+  target.innerHTML=`<div class="improvement-list">${rows.map(row=>{
     const noun=row.total===1?singular:plural;
     return `
-    <div class="team-block">
-      <div class="team-title"><span>${esc(fixText(row.equipo))}</span><span>${row.total} ${esc(noun)}</span></div>
-      <div class="bar-track" aria-label="${row.total} ${esc(noun)}"><div class="bar-fill gold" style="width:${row.total/max*100}%"></div></div>
-      <div class="category-list" style="margin-top:8px">${row.categorias.map(categoria=>`<span class="category-pill">${esc(categoria.nombre)} (${Number(categoria.cantidad||0)})</span>`).join("")}</div>
+    <div class="improvement-row">
+      <div class="improvement-team">${esc(fixText(row.equipo))}</div>
+      <div class="improvement-volume">
+        <div class="bar-track" aria-label="${row.total} ${esc(noun)}"><div class="bar-fill gold" style="width:${row.total/max*100}%"></div></div>
+        <div class="improvement-count">${row.total} ${esc(noun)}</div>
+      </div>
+      <div class="category-list">${row.categorias.map(categoria=>`<span class="category-pill">${esc(categoria.nombre)} (${Number(categoria.cantidad||0)})</span>`).join("")}</div>
     </div>
-  `}).join("");
+  `}).join("")}</div>`;
 }
 function renderActionables(selected,qA){
   if(!externalPeriodAvailable(qA)){document.getElementById("actionablesChart").innerHTML=externalPeriodMessage();return;}
@@ -950,25 +993,39 @@ function renderActionables(selected,qA){
 }
 function renderDelivery(selected,qA){
   if(!externalPeriodAvailable(qA)){document.getElementById("deliveryChart").innerHTML=externalPeriodMessage();return;}
-  const rows=dashboardRows("entregables",selected);
+  const rows=orderDescending(dashboardRows("entregables",selected).map(row=>({
+    equipo:row.equipo,
+    negocio:Number(row.negocio||0),
+    habilitadores:Number(row.habilitadores||0),
+    total:Number(row.negocio||0)+Number(row.habilitadores||0),
+  })),row=>row.total);
   if(!rows.length){
     document.getElementById("deliveryChart").innerHTML='<div class="empty-state">Sin datos para la selección actual.</div>';
     return;
   }
-  const max=Math.max(1,...rows.map(r=>Number(r.negocio||0)+Number(r.habilitadores||0)));
-  document.getElementById("deliveryChart").innerHTML=`<div class="metric-legend">
-    <span><i class="legend-dot" style="background:#DDA40A"></i>Negocio</span>
-    <span><i class="legend-dot" style="background:#1538B5"></i>Habilitadores</span>
-  </div>${rows.map(r=>{
-    const n=Number(r.negocio||0),h=Number(r.habilitadores||0),total=n+h;
-    return `<div class="team-block"><div class="team-title"><span>${esc(fixText(r.equipo))}</span><span>${total} Features</span></div>
-      <div class="stack-track"><div class="stack-segment" style="width:${n/max*100}%;background:#DDA40A"></div><div class="stack-segment" style="width:${h/max*100}%;background:#1538B5"></div></div>
-      <div class="section-meta" style="margin-top:6px">${n} Negocio · ${h} Habilitadores</div></div>`;
-  }).join("")}`;
+  const body=rows.map(r=>{
+    const n=r.negocio,h=r.habilitadores,total=r.total;
+    return `<tr>
+      <td>${esc(fixText(r.equipo))}</td>
+      <td><span class="score-value"><i class="score-dot" style="background:#DDA40A"></i>${n}</span></td>
+      <td><span class="score-value"><i class="score-dot" style="background:#1538B5"></i>${h}</span></td>
+      <td><b>${total}</b></td>
+    </tr>`;
+  }).join("");
+  document.getElementById("deliveryChart").innerHTML=`
+    <div class="team-summary-wrap">
+      <table class="team-summary-table" aria-label="Entrega de valor por equipo">
+        <thead><tr><th>Equipo</th><th>Negocio</th><th>Habilitadores</th><th>Total</th></tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
 }
 function renderStakeholders(selected,qA){
   if(!externalPeriodAvailable(qA)){document.getElementById("stakeholderChart").innerHTML=externalPeriodMessage();return;}
-  const rows=dashboardRows("stakeholders",selected).filter(r=>r.promedio!=null).map(r=>({label:fixText(r.equipo),value:Number(r.promedio)*20}));
+  const rows=orderDescending(
+    dashboardRows("stakeholders",selected).filter(r=>r.promedio!=null).map(r=>({label:fixText(r.equipo),value:Number(r.promedio)*20})),
+    row=>row.value,
+  );
   document.getElementById("stakeholderChart").innerHTML=barRows(rows,{color:"green"});
 }
 function renderRetro(selected,qA){
