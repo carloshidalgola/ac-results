@@ -174,7 +174,6 @@
     <main class="content">
       <header>
         <h1>Radar de Madurez Ágil — Comparativo entre trimestres</h1>
-        <p>Competencias tomadas exclusivamente de <b>Etiqueta Radar</b> (Catalogo_Maestro). Escala fija 0–100.</p>
       </header>
       <div class="kpis" id="kpis"></div>
       <div class="stage">
@@ -309,6 +308,33 @@ ROLE_STATS.forEach(r=>{
 Object.values(ROLE_INDEX).forEach(rows=>{
   rows.sort((a,b)=>String(a.rol).localeCompare(String(b.rol)));
 });
+function indexedRoleRows(selected,roles,periodo,etiqueta,filterRoles){
+  const roleSet=filterRoles?new Set(roles):null;
+  return selected.flatMap(equipo=>
+    (ROLE_INDEX[roleKey(equipo,periodo,etiqueta)]||[])
+      .filter(row=>!roleSet||roleSet.has(row.rol))
+  );
+}
+function weightedRoleScore(rows){
+  const count=rows.reduce((sum,row)=>sum+Number(row.count||0),0);
+  return count
+    ? rows.reduce((sum,row)=>sum+Number(row.avg)*Number(row.count||0),0)/count
+    : null;
+}
+function summarizeRoleScores(rows){
+  const summary=new Map();
+  rows.forEach(row=>{
+    const current=summary.get(row.rol)||{rol:row.rol,count:0,weighted:0};
+    const count=Number(row.count||0);
+    current.count+=count;
+    current.weighted+=Number(row.avg)*count;
+    summary.set(row.rol,current);
+  });
+  return [...summary.values()]
+    .filter(row=>row.count>0)
+    .map(row=>({...row,avg:row.weighted/row.count}))
+    .sort((a,b)=>String(a.rol).localeCompare(String(b.rol)));
+}
 
 const SVG=document.getElementById('radar');
 const NS="http://www.w3.org/2000/svg";
@@ -431,6 +457,12 @@ function wireDimensionTooltip(node,dimension){
   node.addEventListener("mouseleave",hideTip);
 }
 
+function wireCompetencyTooltip(node,competency,hasLink){
+  node.style.cursor=hasLink?"pointer":"help";
+  node.addEventListener("mousemove",ev=>showCompetencyTip(ev,competency,hasLink));
+  node.addEventListener("mouseleave",hideTip);
+}
+
 /* =====================================================================
    drawCompetencyLabel  (SOLO competencias; no toca dim/sub)
    - Ancla en el PUNTO MEDIO RADIAL de la banda (R_COMP_TEXT) con
@@ -459,11 +491,11 @@ function drawCompetencyLabel(i, clipId){
 
   const parent=url ? el("a",{href:url,target:"_blank",rel:"noopener noreferrer",
     class:"competency-link","aria-label":`${label}: abrir recurso de la base de conocimiento`},SVG) : SVG;
-  if(url){ el("title",{},parent).textContent=`Abrir recurso: ${label}`; }
   const t=el("text",{ "font-weight":"600", fill:"#15161a",
     "text-anchor":"middle", "dominant-baseline":"middle",
     transform:`rotate(${rot} ${cx} ${cy})`,
     "clip-path":`url(#${clipId})`}, parent);
+  wireCompetencyTooltip(url?parent:t,label,Boolean(url));
 
   function paint(lines, fs){
     while(t.firstChild) t.removeChild(t.firstChild);
@@ -672,9 +704,8 @@ function selectedScoreMap(selected,periodo){
 function selectedRoleScoreMap(selected,roles,periodo){
   const result={};
   CATALOGO.forEach(c=>{
-    const rows=ROLE_STATS.filter(r=>selected.includes(r.equipo)&&roles.includes(r.rol)&&r.periodo===periodo&&r.etiqueta===c.label);
-    const count=rows.reduce((sum,r)=>sum+Number(r.count||0),0);
-    if(count) result[c.label]=rows.reduce((sum,r)=>sum+Number(r.avg)*Number(r.count||0),0)/count;
+    const score=weightedRoleScore(indexedRoleRows(selected,roles,periodo,c.label,true));
+    if(score!=null) result[c.label]=score;
   });
   return result;
 }
@@ -696,10 +727,10 @@ function buildData(selected,roles,qA,qC){
     for(let k=1;k<valid.length;k++)d+=" L "+valid[k].p[0].toFixed(2)+" "+valid[k].p[1].toFixed(2);
     d+=" Z";
     el("path",{d,fill:"none",stroke:color,"stroke-width":2.8,"stroke-linejoin":"round","stroke-linecap":"round"},dataLayer);
-    valid.forEach(({p,i,s})=>{
+    valid.forEach(({p,i})=>{
       const c=el("circle",{cx:p[0],cy:p[1],r:4.8,fill:color,stroke:"#fff","stroke-width":1.6},dataLayer);
       c.style.cursor="pointer";
-      c.addEventListener("mousemove",ev=>showTip(ev,CATALOGO[i].label,s,selected,roles,periodo,roleFiltered));
+      c.addEventListener("mousemove",ev=>showTip(ev,CATALOGO[i].label,selected,roles,periodo,roleFiltered));
       c.addEventListener("mouseleave",hideTip);
     });
   }
@@ -708,23 +739,17 @@ function buildData(selected,roles,qA,qC){
 }
 
 const tip=document.getElementById('tip');
-function showTip(ev,label,val,selected,roles,periodo,roleFiltered){
-  const roleRows=ROLE_STATS.filter(r=>
-    selected.includes(r.equipo)&&r.periodo===periodo&&r.etiqueta===label&&(!roleFiltered||roles.includes(r.rol))
-  );
-  const teamRows=selected.map(e=>({equipo:e,score:(SCORES[e]&&SCORES[e][periodo]||{})[label]})).filter(r=>r.score!=null);
-  const detail=roleRows.length
-    ? `<table><thead><tr><th>Equipo / Rol</th><th class="num">N</th><th class="num">Prom.</th></tr></thead><tbody>${
-        roleRows.map(r=>`<tr><td>${fixText(r.equipo)} · ${fixText(r.rol)}</td><td class="num">${r.count}</td><td class="num">${Number(r.avg).toFixed(1)}</td></tr>`).join("")
+function showTip(ev,label,selected,roles,periodo,roleFiltered){
+  const roleRows=indexedRoleRows(selected,roles,periodo,label,roleFiltered);
+  const groupedRoles=summarizeRoleScores(roleRows);
+  const detail=groupedRoles.length
+    ? `<table><thead><tr><th>Rol</th><th class="num">#</th><th class="num">Resultado</th></tr></thead><tbody>${
+        groupedRoles.map(row=>`<tr><td>${fixText(row.rol)}</td><td class="num">${row.count}</td><td class="num">${(row.avg*10).toFixed(1).replace(/\.0$/,"")}%</td></tr>`).join("")
       }</tbody></table>`
-    : teamRows.length
-      ? `<table><thead><tr><th>Equipo</th><th class="num">Prom. consolidado</th></tr></thead><tbody>${
-          teamRows.map(r=>`<tr><td>${fixText(r.equipo)}</td><td class="num">${Number(r.score).toFixed(1)}</td></tr>`).join("")
-        }</tbody></table>`
-    : `<div class="s">Sin detalle para los equipos seleccionados.</div>`;
+    : `<div class="s">Sin detalle disponible por rol.</div>`;
   tip.innerHTML=`
     <div class="t">${label}</div>
-    <div class="s">${periodo} · ${roleFiltered?'Promedio ponderado de los roles seleccionados':'Promedio consolidado'}: ${val.toFixed(1)}/10 (${(val*10).toFixed(0)}%)</div>
+    <div class="s">${periodo} · Resultados por rol</div>
     ${detail}
   `;
   tip.style.left=(ev.clientX+12)+'px';
@@ -732,6 +757,38 @@ function showTip(ev,label,val,selected,roles,periodo,roleFiltered){
   tip.style.opacity=1;
 }
 function hideTip(){tip.style.opacity=0;}
+
+function showCompetencyTip(ev,competency,hasLink){
+  const selected=[...selectedTeams],roles=[...selectedRoles],qA=selQA.value,qC=selQC.value;
+  const allRoles=availableRoleValues.length>0&&availableRoleValues.every(role=>selectedRoles.has(role));
+  const roleFiltered=roles.length>0&&!allRoles;
+  const score=(equipo,periodo)=>{
+    if(!roles.length) return null;
+    if(!roleFiltered) return (SCORES[equipo]&&SCORES[equipo][periodo]||{})[competency]??null;
+    return weightedRoleScore(indexedRoleRows([equipo],roles,periodo,competency,true));
+  };
+  const rows=selected.map(equipo=>({equipo,actual:score(equipo,qA),comparativo:score(equipo,qC)}));
+  const scoreMap=(periodo)=>roleFiltered
+    ? selectedRoleScoreMap(selected,roles,periodo)
+    : selectedScoreMap(selected,periodo);
+  const actual=roles.length?(scoreMap(qA)[competency]??null):null;
+  const comparativo=roles.length?(scoreMap(qC)[competency]??null):null;
+  const format=value=>value==null?'—':`${(value*10).toFixed(1).replace(/\.0$/,'')}%`;
+  const detail=selected.length
+    ? `<table><thead><tr><th>Equipo</th><th class="num">${fixText(qA)}</th><th class="num">${fixText(qC)}</th></tr></thead><tbody>${
+        rows.map(row=>`<tr><td>${fixText(row.equipo)}</td><td class="num">${format(row.actual)}</td><td class="num">${format(row.comparativo)}</td></tr>`).join('')
+      }</tbody></table>`
+    : `<div class="s">Sin equipos seleccionados.</div>`;
+  tip.innerHTML=`
+    <div class="t">${fixText(competency)}</div>
+    <div class="s">${fixText(qA)}: ${format(actual)} · ${fixText(qC)}: ${format(comparativo)}</div>
+    ${detail}
+    ${hasLink?'<div class="s">Haz clic para abrir el recurso relacionado.</div>':''}
+  `;
+  tip.style.left=(ev.clientX+12)+'px';
+  tip.style.top=(ev.clientY-10)+'px';
+  tip.style.opacity=1;
+}
 
 function showSubdimensionTip(ev,dimension,subdimension){
   const selected=[...selectedTeams],qA=selQA.value,qC=selQC.value;
